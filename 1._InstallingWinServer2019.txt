@@ -1,0 +1,141 @@
+Install Windows Server 2019
+Configure Windows Server 2019
+Manage Server Roles & Features
+
+/////////////////////////////////////////////////////////////
+1- Install Windows Server 2019
+
+    - Connect to '<Domain Member>'
+
+    - On 'Server Manager > Dashboard' window, select 'Tools' -> 'Hyper-V Manager'
+
+    - 'Hyper-V Manager' application window opens. From 'Virtual Machines' list, 
+    right-click on <Host> -> 'Connect'
+    
+    - '<Host> on <Domain Member> - Virtual Machine Connection' -> Select 'Start'
+    to power on the device. Wait for VM to boot up
+
+    - <Host> on <Domain Member>' window displays connection -> Windows Setup screen
+    displayed ('View' -> 'Full Screen Mode')
+
+    - <Host> on <Domain Member> connection bar -> accept default settings for 
+    'Windows Setup' by selecting 'Next' -> 'Install Now'
+    Standby for installation
+
+    - 'Select Operating System you want to install' select 'Windows Server 2019 Standard
+    (Desktop Experience)' OS -> 'Next'
+    'Applicable Notes and License terms' select 'I accept the terms' -> 'Next'
+    'Which type of installation...?' select 'Custom...'
+    'Where do you want to install Windows?' -> 'Next' to select "Drive 0 Unallocated Space"
+    'Installing Windows' installation in progress 
+    Standby for installation to finish and setup to automatically reboot <Host>
+    Ignore 'Press any key to boot from CD or DVD._'
+    Setup will continue with installation of Windows, drivers, and other tasks and then 
+    restart <Host>
+    Ignore 'Press any key to boot from CD or DVD._'
+
+    - 'Customize Settings' window displays 'User name' = "Administrator"
+    Set password and confirm -> 'Finish'
+    Windows Setup finalizes settings
+
+    - '<Host> on <Domain Member>' displays unlock message
+    Restore Down -> "Ctrl_Alt_Delete" button on far left of toolbar. 
+    Enter password for "Administrator" -> 'Enter'
+    Switch to 'Full Screen Mode'
+
+
+2- Configure Windows Server 2019
+
+    - Ensure connection to '<Domain Member>' where '<Host> on <Domain Member>' VM is running
+    'Server Manager' > 'Dashboard' window is open
+    Select 'Tools' -> 'Windows PowerShell'
+
+    PowerShell Commands
+
+PS C:\Users\Administrator>
+  Assign new name to computer
+    - hostname
+        to determine current host's name (will be randomly assigned)
+    - Rename-Computer -NewName <name>
+        to assisgn a new name to the Computer
+        Will not be reassigned until system reboot
+  Assign Static IP Address and Preferred DNS Server
+    - ipconfig /all
+        to display network information for current host
+        _____________________________________________________________________
+        "Ethernet Adapter" section -> connection name = "Ethernet"
+        Host likely using automatic private IP address "169.254.X.X"
+        Subnet Mask likely "255.255.0.0"
+        DNS Servers assigned to "fec0:0:0:ffff::1%1"
+                                "...............2%1"
+                                "...............3%1"
+        _______________________________________________________________________
+    - netsh interface ipv4 set address Ethernet static 192.168.0.8 255.255.255.0   
+        set static IPv4 address to 192.168.0.8 and Subnet mask to 255.255.255.0
+        (or other IPv4 address and Subnet mask as determined by network)
+    - netsh interface ipv4 add dns Ethernet 192.168.0.1
+        set DNS Server to the IPv4 address of the '<Domain Controller>'
+    - ipconfig /all
+        check that information has properly updated
+    - ping <url>
+        verify that the computer can resolve hostnames on domain (plabdc01.practicelabs.com from ACI Learning)
+    - shutdown /r /t 0
+        shutdown -> reboot -> timer = 0 (shutdown & reboot with no delay)
+
+3- Add a Computer to the Active Directory Domain
+
+    - Ensure connection to '<Domain Member>' where '<Host> on <Domain Member>' VM is running
+    'Server Manager' > 'Dashboard' window is open
+    Select 'Tools' -> 'Windows PowerShell'
+
+    PowerShell Commands
+
+PS C:\Users\Administrator>
+    - Add-Computer -DomainCredential <credential\administrator> -DomainName <domain>
+        add computer to the domain entered
+        credential request dialog box requires admin password to be entered
+        reboot necessary 
+    - shutdown /r /t 0
+
+4- Verify Server Logon to Domain
+    - Ensure connection to '<Domain Member>' where '<Host> on <Domain Member>' VM is running
+    - Select 'Other user' at sign-in screen
+    - 'Other user' login info:
+        user name = "<domaincredential\administrator>" (Domain Credential entered in previous step)
+        password = "<admin_password>"
+    - 'Server Manager' > 'Dashboard' window is open for <other user> account
+
+5- Install Active Directory Domain Services (ADDS)
+
+    - Ensure connection to '<Domain Member>' where '<Host> on <Domain Member>' VM is running
+    'Server Manager' > 'Dashboard' window is open
+    Select 'Tools' -> 'Windows PowerShell'
+
+    PowerShell Commands
+
+PS C:\Users\Administrator>
+    - Add-WindowsFeature -Name AD-Domain-Services -IncludeManagementTools
+        install AD binaries
+        standby for installation (progress bar)
+
+6- Install a Replica Domain Controller
+
+    PowerShell Commands
+
+PS C:\Users\Administrator>
+    - Install-ADDSDomainController -DomainName <domain>
+        configure a replica domain controller, entering the domain name of the DC
+    
+    - 'SafeModeAdminstratorPassword' enter <admin_password>
+    - 'Confirm SafeModeAdminstratorPassword' reenter <admin_password>
+    - 'Do you want to continue with this operation?' -> 'a' (Yes for all)
+    standby for process to complete -> restart
+
+7- Verify Domain Controller Installation
+
+    - Ensure connection to '<Domain Member>' where '<Host> on <Domain Member>' VM is running
+    - Select 'Other user' at sign-in screen (updated as default user account for this machine)
+    - 'Server Manager' > 'Dashboard' window is open
+    - Select 'Tools' -> 'Active Directory Users and Computers'
+    - 'Active Directory Users and Computers' window -> expand replica DC -> click 'Domain Controllers' organizational unit
+    observe details pane, <Host> server is a GC (Global Catalog_ server)
